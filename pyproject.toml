@@ -1,0 +1,15 @@
+[project]
+name = "personal-agent"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "fastapi>=0.136.1",
+    "fastmcp>=3.3.0",
+    "makefile>=1.1.0",
+    "openai>=2.36.0",
+    "pydantic>=2.13.4",
+    "pydantic-ai>=1.96.1",
+    "uvicorn>=0.47.0",
+]
