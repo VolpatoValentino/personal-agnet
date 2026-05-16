@@ -3,7 +3,7 @@
 # Start the hardware-accelerated local model (Port 8080)
 run-llama:
 	@echo "Starting Llama.cpp Server with AMD GPU acceleration..."
-	HIP_VISIBLE_DEVICES=0 /home/vvolpato/llama.cpp/build/bin/llama-server -hf unsloth/gemma-4-26B-A4B-it-GGUF:UD-Q4_K_M --port 8080 -c 8192 -ngl 25 -fa on --no-mmap --no-warmup --no-mmproj -np 1 --jinja
+	HIP_VISIBLE_DEVICES=0 /home/vvolpato/llama.cpp/build/bin/llama-server -hf unsloth/gemma-4-26B-A4B-it-GGUF:UD-Q4_K_M --port 8080 -c 16384 --cache-reuse 256 -ngl 25 -fa on --no-mmap --no-warmup --no-mmproj -np 1 --jinja
 
 # Start only the Agent FastAPI server (Port 8000)
 run-agent:
