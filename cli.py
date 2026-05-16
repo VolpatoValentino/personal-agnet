@@ -3,9 +3,12 @@ load_dotenv()
 
 import argparse
 import json
+from dataclasses import dataclass
+from typing import Literal
 
 import httpx
 import logfire
+import questionary
 from rich.console import Console
 from rich.live import Live
 from rich.markdown import Markdown
@@ -17,6 +20,16 @@ from api.app.observability import setup_logfire
 setup_logfire("personal-agent-cli", instrument_httpx=True)
 
 console = Console()
+
+CUSTOM_REPLY_LABEL = "Type a custom reply…"
+
+
+@dataclass
+class _TurnOutcome:
+    status: Literal["done", "question", "error", "cancelled"]
+    session_id: str | None
+    question: dict | None = None  # {call_id, question, options}
+    error: str | None = None
 
 
 def _iter_sse_events(response: httpx.Response):
@@ -40,8 +53,8 @@ def _run_streamed_turn(
     url: str,
     payload: dict,
     provider_name: str,
-) -> tuple[str | None, str | None]:
-    """Stream a single turn, rendering text deltas live. Returns (reply, session_id)."""
+) -> _TurnOutcome:
+    """Stream a single turn. Returns an outcome describing how it ended."""
     reply_chunks: list[str] = []
     session_id: str | None = payload.get("session_id")
     console.print("\n[bold magenta]Agent:[/bold magenta]")
@@ -51,7 +64,8 @@ def _run_streamed_turn(
             console.print(
                 f"[bold red]API Error: {response.status_code}[/bold red]\n{response.text}"
             )
-            return None, session_id
+            return _TurnOutcome("error", session_id, error=f"HTTP {response.status_code}")
+
         with Live(Markdown(""), console=console, refresh_per_second=20, vertical_overflow="visible") as live:
             for event in _iter_sse_events(response):
                 etype = event.get("type")
@@ -64,13 +78,51 @@ def _run_streamed_turn(
                 elif etype == "text":
                     reply_chunks.append(event.get("text", ""))
                     live.update(Markdown("".join(reply_chunks)))
+                elif etype == "question":
+                    return _TurnOutcome(
+                        status="question",
+                        session_id=session_id,
+                        question={
+                            "call_id": event["call_id"],
+                            "question": event.get("question", ""),
+                            "options": event.get("options", []),
+                        },
+                    )
+                elif etype == "awaiting_answer":
+                    # Some streams emit this after `question`; harmless to ignore.
+                    continue
                 elif etype == "error":
+                    msg = event.get("message", "unknown error")
                     live.update(Markdown("".join(reply_chunks)))
-                    console.print(f"\n[bold red]Stream error: {event.get('message')}[/bold red]")
-                    return None, session_id
+                    console.print(f"\n[bold red]Stream error: {msg}[/bold red]")
+                    return _TurnOutcome("error", session_id, error=msg)
                 elif etype == "done":
                     break
-    return "".join(reply_chunks), session_id
+    return _TurnOutcome("done", session_id)
+
+
+def _ask_user_via_picker(question: dict) -> tuple[Literal["answer", "custom", "cancel"], str | None]:
+    """Show the agent's question as an arrow-key picker.
+
+    Returns one of:
+      - ('answer', selected_option_str)  — user picked one of the offered options
+      - ('custom', typed_reply)          — user chose to type their own reply
+      - ('cancel', None)                 — user hit Ctrl-C / Esc
+    """
+    console.print(f"\n[bold yellow]?[/bold yellow] {question['question']}")
+    options = list(question.get("options") or [])
+    choices = [*options, CUSTOM_REPLY_LABEL]
+    selection = questionary.select(
+        "Pick one:",
+        choices=choices,
+        use_shortcuts=True,
+    ).ask()
+    if selection is None:
+        return "cancel", None
+    if selection == CUSTOM_REPLY_LABEL:
+        free = Prompt.ask("[bold cyan]Your reply[/bold cyan]")
+        return "custom", free
+    return "answer", selection
 
 
 def _run_blocking_turn(
@@ -78,8 +130,8 @@ def _run_blocking_turn(
     url: str,
     payload: dict,
     provider_name: str,
-) -> tuple[str | None, str | None]:
-    """Old-style request/response turn for `--no-stream`."""
+) -> _TurnOutcome:
+    """Old-style request/response turn for `--no-stream` (no ask_user support)."""
     with console.status(
         f"[bold yellow]Agent ({provider_name}) is thinking and using tools...",
         spinner="dots",
@@ -90,7 +142,53 @@ def _run_blocking_turn(
     reply = data.get("reply", "No reply received.")
     console.print("\n[bold magenta]Agent:[/bold magenta]")
     console.print(Markdown(reply))
-    return reply, data.get("session_id", payload.get("session_id"))
+    return _TurnOutcome("done", data.get("session_id", payload.get("session_id")))
+
+
+def _handle_user_message(
+    client: httpx.Client,
+    url: str,
+    user_input: str,
+    session_id: str | None,
+    *,
+    use_stream: bool,
+    provider_name: str,
+) -> str | None:
+    """Drive one user turn through to completion. Returns the session_id to use next."""
+    payload: dict = {"message": user_input}
+    if session_id is not None:
+        payload["session_id"] = session_id
+
+    while True:
+        if use_stream:
+            outcome = _run_streamed_turn(client, url, payload, provider_name)
+        else:
+            outcome = _run_blocking_turn(client, url, payload, provider_name)
+
+        if outcome.session_id:
+            session_id = outcome.session_id
+
+        if outcome.status == "done":
+            return session_id
+        if outcome.status == "error":
+            return session_id
+        if outcome.status == "question":
+            kind, value = _ask_user_via_picker(outcome.question or {})
+            if kind == "cancel":
+                console.print("[bold yellow]Cancelled — agent's question left unanswered.[/bold yellow]")
+                return session_id
+            payload = {"session_id": session_id}
+            if kind == "answer":
+                payload["answer"] = {
+                    "call_id": outcome.question["call_id"],
+                    "value": value,
+                }
+            else:  # custom — let the server treat the typed reply as the answer
+                payload["answer"] = {
+                    "call_id": outcome.question["call_id"],
+                    "value": value or "",
+                }
+            # loop back to stream the resumed run
 
 
 def main():
@@ -139,10 +237,6 @@ def main():
                 if not user_input.strip():
                     continue
 
-                payload: dict = {"message": user_input}
-                if session_id is not None:
-                    payload["session_id"] = session_id
-
                 with logfire.span(
                     "cli.user_turn",
                     provider=provider_name,
@@ -151,12 +245,14 @@ def main():
                     stream=not args.no_stream,
                 ):
                     try:
-                        if args.no_stream:
-                            _, new_sid = _run_blocking_turn(client, AGENT_URL, payload, provider_name)
-                        else:
-                            _, new_sid = _run_streamed_turn(client, AGENT_URL, payload, provider_name)
-                        if new_sid:
-                            session_id = new_sid
+                        session_id = _handle_user_message(
+                            client,
+                            AGENT_URL,
+                            user_input,
+                            session_id,
+                            use_stream=not args.no_stream,
+                            provider_name=provider_name,
+                        )
                     except httpx.ConnectError:
                         logfire.error("cli.connect_error", url=AGENT_URL)
                         console.print("[bold red]Error: Could not connect to the Agent API.[/bold red]")
