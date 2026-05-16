@@ -25,7 +25,7 @@ from pydantic_ai.tools import DeferredToolRequests, DeferredToolResults
 
 from api.app.configs.schemas import ChatRequest, ChatResponse
 from api.app.routers._ask_user import ASK_USER_TOOL_NAME, ASK_USER_TOOLSET
-from api.app.routers._router import Intent, classify
+from api.app.routers._router import Intent, TurnContext, classify
 from api.app.utils.mcp_utils import get_toolsets
 
 # session_id -> message history
@@ -112,6 +112,7 @@ def build_chat_router(
                 request.message,
                 message_history=history,
                 toolsets=get_toolsets(decision.intents),
+                deps=TurnContext(intents=list(decision.intents)),
             )
             _SESSIONS[session_id] = result.all_messages()
             _PRIOR_TURNS[session_id] = (request.message, list(decision.intents))
@@ -197,6 +198,7 @@ def build_chat_router(
                         user_prompt,
                         message_history=history,
                         toolsets=_streaming_toolsets(intents),
+                        deps=TurnContext(intents=list(intents)),
                         output_type=[str, DeferredToolRequests],
                         deferred_tool_results=deferred_results,
                     ) as result:
