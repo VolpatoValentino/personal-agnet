@@ -20,8 +20,8 @@ from pydantic_ai.providers.openai import OpenAIProvider
 from sqlalchemy import func, select
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 
-from personal_agent.memory.db import SessionFactory
-from personal_agent.memory.models import ConversationHistory, SessionSummary
+from core.entity.db import SessionFactory
+from core.entity.models import ConversationHistory, SessionSummary
 
 _IDLE_MINUTES = int(os.getenv("SUMMARIZER_IDLE_MINUTES", "30"))
 _MAX_CHARS_PER_TURN = 600  # truncate long messages so the summarizer prompt stays small

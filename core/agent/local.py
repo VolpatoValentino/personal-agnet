@@ -2,10 +2,10 @@ from pydantic_ai import Agent, RunContext
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
 
-from personal_agent.api.chat_route import build_chat_router
-from personal_agent.agents.prompts import build_system_prompt
-from personal_agent.agents.intent_classifier import TurnContext
-from personal_agent.skills import render_skills_for
+from api.app.routers.chat import build_chat_router
+from core.agent.prompts import build_system_prompt
+from core.agent.intent_classifier import TurnContext
+from core.skills import render_skills_for
 
 MODEL_NAME = "gemma-4-26B"
 

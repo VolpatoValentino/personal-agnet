@@ -13,8 +13,8 @@ from pydantic_ai.messages import (
 )
 from sqlalchemy import select
 
-from personal_agent.memory.db import SessionFactory
-from personal_agent.memory.models import ConversationHistory
+from core.entity.db import SessionFactory
+from core.entity.models import ConversationHistory
 
 
 class AsyncMemoryService:

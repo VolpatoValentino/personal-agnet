@@ -4,8 +4,8 @@ import logfire
 from sqlalchemy import delete, select
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 
-from personal_agent.memory.db import SessionFactory
-from personal_agent.memory.models import UserFact
+from core.entity.db import SessionFactory
+from core.entity.models import UserFact
 
 
 async def get_facts(user_id: str) -> dict[str, str]:

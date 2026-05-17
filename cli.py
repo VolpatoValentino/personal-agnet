@@ -3,6 +3,7 @@ load_dotenv()
 
 import argparse
 import json
+import os
 from dataclasses import dataclass
 from typing import Literal
 
@@ -15,7 +16,7 @@ from rich.markdown import Markdown
 from rich.panel import Panel
 from rich.prompt import Prompt
 
-from personal_agent.observability import setup_logfire
+from core.observability import setup_logfire
 
 setup_logfire("personal-agent-cli", instrument_httpx=True)
 
@@ -203,12 +204,28 @@ def main():
         action="store_true",
         help="Disable streaming; wait for the full reply before rendering.",
     )
+    parser.add_argument(
+        "--host",
+        default=os.getenv("AGENT_API_HOST", "localhost"),
+        help="Agent API host (default: localhost, or $AGENT_API_HOST).",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=int(os.getenv("AGENT_API_PORT", "8000")),
+        help="Agent API port (default: 8000, or $AGENT_API_PORT).",
+    )
     args = parser.parse_args()
 
     base = "agent" if args.local else "google_agent"
     provider_name = "Local Llama.cpp" if args.local else "Google AI Studio"
     endpoint = "chat" if args.no_stream else "chat/stream"
-    AGENT_URL = f"http://localhost:8000/{base}/{endpoint}"
+    AGENT_URL = f"http://{args.host}:{args.port}/{base}/{endpoint}"
+
+    auth_token = os.getenv("AGENT_AUTH_TOKEN", "").strip()
+    auth_headers: dict[str, str] = (
+        {"Authorization": f"Bearer {auth_token}"} if auth_token else {}
+    )
 
     console.print(Panel.fit(
         f"[bold green]Personal Agent CLI[/bold green]\n"
@@ -222,7 +239,7 @@ def main():
 
     session_id: str | None = None
 
-    with httpx.Client(timeout=None) as client:
+    with httpx.Client(timeout=None, headers=auth_headers) as client:
         while True:
             try:
                 user_input = Prompt.ask("\n[bold cyan]You[/bold cyan]")

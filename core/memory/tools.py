@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from pydantic_ai import Agent, RunContext
 
-from personal_agent.memory.facts import delete_fact, set_fact
-from personal_agent.agents.intent_classifier import TurnContext
+from core.memory.facts import delete_fact, set_fact
+from core.agent.intent_classifier import TurnContext
 
 
 def attach_memory_tools(agent: Agent[TurnContext, str]) -> None:

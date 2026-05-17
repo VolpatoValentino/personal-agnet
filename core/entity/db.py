@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import (
     create_async_engine,
 )
 
-from personal_agent.memory.models import Base
+from core.entity.models import Base
 
 _DEFAULT_DB_PATH = Path("data/agent.db")
 
