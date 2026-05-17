@@ -21,7 +21,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Iterable
 
-from api.app.routers._router import Intent
+from personal_agent.agents.intent_classifier import Intent
 
 _SKILLS_DIR = Path(__file__).parent
 _SHARED = "shared"

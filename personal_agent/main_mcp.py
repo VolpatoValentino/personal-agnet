@@ -3,11 +3,11 @@ from dotenv import load_dotenv
 import os
 from fastmcp import FastMCP
 
-from api.app.observability import setup_logfire
+from personal_agent.observability import setup_logfire
 
-from api.app.mcp.system import mcp as system_mcp
-from api.app.mcp.fs import mcp as fs_mcp
-from api.app.mcp.git import mcp as git_mcp
+from personal_agent.mcp_server.system import mcp as system_mcp
+from personal_agent.mcp_server.fs import mcp as fs_mcp
+from personal_agent.mcp_server.git import mcp as git_mcp
 
 
 load_dotenv()

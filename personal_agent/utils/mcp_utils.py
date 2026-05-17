@@ -3,7 +3,7 @@ from typing import Iterable
 
 from pydantic_ai.mcp import MCPServer, MCPServerStdio, MCPServerStreamableHTTP
 
-from api.app.routers._router import ALL_TOOL_INTENTS, Intent
+from personal_agent.agents.intent_classifier import ALL_TOOL_INTENTS, Intent
 
 LOGFIRE_BASE_URL = "https://logfire-eu.pydantic.dev"
 GITHUB_MCP_URL = "https://api.githubcopilot.com/mcp/"

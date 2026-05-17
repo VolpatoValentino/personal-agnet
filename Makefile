@@ -8,12 +8,12 @@ run-llama:
 # Start only the Agent FastAPI server (Port 8000)
 run-agent:
 	@echo "Starting Agent FastAPI Server..."
-	uv run python -m api.app.main
+	uv run python -m personal_agent.main
 
 # Start only the FastMCP Server (Port 8081)
 run-mcp:
 	@echo "Starting FastMCP Server..."
-	uv run python -m api.app.main_mcp
+	uv run python -m personal_agent.mcp_server.main
 
 # Start the interactive chat CLI
 run-cli:

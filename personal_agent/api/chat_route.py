@@ -23,10 +23,10 @@ from pydantic_ai import Agent
 from pydantic_ai.messages import ModelMessage
 from pydantic_ai.tools import DeferredToolRequests, DeferredToolResults
 
-from api.app.configs.schemas import ChatRequest, ChatResponse
-from api.app.routers._ask_user import ASK_USER_TOOL_NAME, ASK_USER_TOOLSET
-from api.app.routers._router import Intent, TurnContext, classify
-from api.app.utils.mcp_utils import get_toolsets
+from personal_agent.api.schemas import ChatRequest, ChatResponse
+from personal_agent.agents.ask_user import ASK_USER_TOOL_NAME, ASK_USER_TOOLSET
+from personal_agent.agents.intent_classifier import Intent, TurnContext, classify
+from personal_agent.utils.mcp_utils import get_toolsets
 
 # session_id -> message history
 _SESSIONS: dict[str, list[ModelMessage]] = {}

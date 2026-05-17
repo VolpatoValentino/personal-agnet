@@ -15,7 +15,7 @@ from rich.markdown import Markdown
 from rich.panel import Panel
 from rich.prompt import Prompt
 
-from api.app.observability import setup_logfire
+from personal_agent.observability import setup_logfire
 
 setup_logfire("personal-agent-cli", instrument_httpx=True)
 
